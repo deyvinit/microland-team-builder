@@ -6,13 +6,44 @@ export default function Login() {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const navigate = useNavigate();
 
-  const handleBiometricLogin = () => {
+  const handleBiometricLogin = async () => {
     setIsAuthenticating(true);
-    // Simulate a native biometric prompt delay
-    setTimeout(() => {
-      setIsAuthenticating(false);
-      navigate('/dashboard');
-    }, 2000);
+    try {
+      if (window.PublicKeyCredential) {
+        const challenge = new Uint8Array(32);
+        const userId = new Uint8Array(16);
+        window.crypto.getRandomValues(challenge);
+        window.crypto.getRandomValues(userId);
+
+        await navigator.credentials.create({
+          publicKey: {
+            challenge: challenge,
+            rp: { name: "Team Builder Secure Local", id: window.location.hostname },
+            user: { id: userId, name: "admin@local", displayName: "Admin User" },
+            pubKeyCredParams: [{ type: "public-key", alg: -7 }],
+            authenticatorSelection: { userVerification: "required" },
+            timeout: 60000,
+            attestation: "none"
+          }
+        });
+        
+        setIsAuthenticating(false);
+        navigate('/dashboard');
+      } else {
+        setTimeout(() => {
+          setIsAuthenticating(false);
+          navigate('/dashboard');
+        }, 1500);
+      }
+    } catch (err) {
+      console.error("Biometric prompt cancelled or failed", err);
+      // Apple's OS tightly restricts WebAuthn on self-signed IP certificates
+      // Fail gracefully backward to the simulated loading gate for the presentation.
+      setTimeout(() => {
+        setIsAuthenticating(false);
+        navigate('/dashboard');
+      }, 1500);
+    }
   };
 
   return (
@@ -33,7 +64,7 @@ export default function Login() {
           ) : (
             <Fingerprint size={24} />
           )}
-          {isAuthenticating ? 'Authenticating...' : 'Authenticate with Face ID'}
+          {isAuthenticating ? 'Authenticating...' : 'Authenticate with Biometrics'}
         </button>
       </div>
     </div>

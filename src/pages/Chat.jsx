@@ -6,6 +6,24 @@ export default function Chat() {
   const navigate = useNavigate();
   const [isListening, setIsListening] = useState(false);
   const [query, setQuery] = useState('');
+
+  let touchTimer = null;
+  const deleteMessage = (msgId) => {
+    setMessageToDelete(msgId);
+  };
+
+  const confirmDelete = () => {
+    if (messageToDelete) {
+      setMessages(prev => prev.filter(m => m.id !== messageToDelete));
+      setMessageToDelete(null);
+    }
+  };
+  const handleTouchStart = (msgId) => {
+    touchTimer = setTimeout(() => deleteMessage(msgId), 800);
+  };
+  const handleTouchEnd = () => {
+    if (touchTimer) clearTimeout(touchTimer);
+  };
   
   // Initialize from LocalStorage or Fallback to Default Welcome Message
   const [messages, setMessages] = useState(() => {
@@ -16,6 +34,8 @@ export default function Chat() {
   
   const [isTyping, setIsTyping] = useState(false);
   const [pushNotification, setPushNotification] = useState('');
+  const [messageToDelete, setMessageToDelete] = useState(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   // Persist messages to LocalStorage whenever they update
   useEffect(() => {
@@ -23,13 +43,39 @@ export default function Chat() {
   }, [messages]);
 
   const toggleListen = () => {
-    setIsListening(prev => !prev);
-    if (!isListening) {
-      setTimeout(() => {
-        setIsListening(false);
-        setQuery('Find me a Node.js developer'); 
-      }, 2000);
+    if (isListening) return;
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Voice recognition is not supported in this browser or device.");
+      return;
     }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      setQuery(''); // Clear field so they see it transcribing
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setQuery(transcript);
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Microphone error:", event.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
   };
 
   const handleSend = async (manualQuery = query) => {
@@ -39,6 +85,10 @@ export default function Chat() {
     setMessages(prev => [...prev, userMessage]);
     setQuery('');
     setIsTyping(true);
+    
+    // Auto-reset textarea height after dispatched
+    const txt = document.getElementById('chat-input-area');
+    if (txt) txt.style.height = 'auto';
 
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/ai/match-llm`, {
@@ -221,19 +271,16 @@ export default function Chat() {
 
       <nav className="nav-bar">
         <button onClick={() => navigate('/dashboard')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-color)' }}>
-          <ArrowLeft size={20} /> Back
+          <ArrowLeft size={20} /> <span className="hide-icon-text">Back</span>
         </button>
         <h2 style={{ fontSize: '1.2rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Bot size={24} color="var(--primary-color)" /> AI Concierge
+          <Bot size={24} color="var(--primary-color)" /> <span className="hide-icon-text">AI Concierge</span>
         </h2>
         <button 
-          onClick={() => {
-            localStorage.removeItem('chat_history');
-            setMessages([{ id: Date.now(), text: "Hello! I'm your AI Concierge. What kind of team are you looking to build today?", sender: 'ai', type: 'text' }]);
-          }} 
+          onClick={() => setShowClearConfirm(true)} 
           style={{ color: 'var(--muted-text)', fontSize: '0.85rem', background: 'transparent', border: '1px solid var(--border-color)', padding: '0.4rem 0.8rem', borderRadius: '4px' }}
         >
-          Clear
+          Clear All
         </button>
       </nav>
 
@@ -242,7 +289,13 @@ export default function Chat() {
           {messages.map(msg => {
             if (msg.type === 'text') {
               return (
-                <div key={msg.id} style={{ 
+                <div 
+                  key={msg.id} 
+                  onContextMenu={(e) => { e.preventDefault(); deleteMessage(msg.id); }}
+                  onTouchStart={() => handleTouchStart(msg.id)}
+                  onTouchEnd={handleTouchEnd}
+                  onTouchCancel={handleTouchEnd}
+                  style={{ 
                   alignSelf: msg.sender === 'ai' ? 'flex-start' : 'flex-end',
                   background: msg.sender === 'ai' ? 'var(--card-bg)' : 'var(--primary-color)',
                   color: msg.sender === 'ai' ? 'var(--text-color)' : '#fff',
@@ -261,7 +314,13 @@ export default function Chat() {
 
             if (msg.type === 'project_proposal') {
               return (
-                <div key={msg.id} style={{
+                <div 
+                  key={msg.id} 
+                  onContextMenu={(e) => { e.preventDefault(); deleteMessage(msg.id); }}
+                  onTouchStart={() => handleTouchStart(msg.id)}
+                  onTouchEnd={handleTouchEnd}
+                  onTouchCancel={handleTouchEnd}
+                  style={{
                   alignSelf: 'flex-start',
                   background: 'var(--card-bg)',
                   padding: '1.5rem',
@@ -355,7 +414,13 @@ export default function Chat() {
 
             if (msg.type === 'proposal') {
               return (
-                <div key={msg.id} style={{
+                <div 
+                  key={msg.id} 
+                  onContextMenu={(e) => { e.preventDefault(); deleteMessage(msg.id); }}
+                  onTouchStart={() => handleTouchStart(msg.id)}
+                  onTouchEnd={handleTouchEnd}
+                  onTouchCancel={handleTouchEnd}
+                  style={{
                   alignSelf: 'flex-start',
                   background: 'var(--card-bg)',
                   padding: '1.5rem',
@@ -458,13 +523,37 @@ export default function Chat() {
             <Mic size={20} />
           </button>
           
-          <input 
-            type="text" 
+          <textarea 
+            id="chat-input-area"
             placeholder="Type your goal... (e.g. 'Build my fintech team')" 
             value={query}
-            onChange={e => setQuery(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSend(query)}
-            style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '1.05rem', color: 'var(--text-color)', outline: 'none' }} 
+            onChange={e => {
+              setQuery(e.target.value);
+              e.target.style.height = 'auto';
+              e.target.style.height = `${e.target.scrollHeight}px`;
+            }}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend(query);
+              }
+            }}
+            rows={1}
+            style={{ 
+              flex: 1, 
+              border: 'none', 
+              background: 'transparent', 
+              fontSize: '1.05rem', 
+              color: 'var(--text-color)', 
+              outline: 'none',
+              resize: 'none',
+              minHeight: '24px',
+              maxHeight: '120px',
+              overflowY: 'auto',
+              fontFamily: 'inherit',
+              padding: '2px 0',
+              lineHeight: '1.4'
+            }} 
           />
           
           <button 
@@ -475,6 +564,61 @@ export default function Chat() {
           </button>
         </div>
       </main>
+
+      {showClearConfirm && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1.5rem' }}>
+          <div className="auth-card" style={{ width: '100%', maxWidth: '400px', padding: '2rem', textAlign: 'center', margin: 0, animation: 'fadeIn 0.2s ease-out' }}>
+            <h3 style={{ fontSize: '1.3rem', marginBottom: '0.5rem', marginTop: 0 }}>Clear All Chat History?</h3>
+            <p style={{ color: 'var(--muted-text)', fontSize: '0.95rem', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+              Are you sure you want to permanently delete your entire conversation history with the AI Concierge?
+            </p>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button 
+                onClick={() => setShowClearConfirm(false)}
+                style={{ flex: 1, padding: '0.8rem', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-color)', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  localStorage.removeItem('chat_history');
+                  setMessages([{ id: Date.now(), text: "Hello! I'm your AI Concierge. What kind of team are you looking to build today?", sender: 'ai', type: 'text' }]);
+                  setShowClearConfirm(false);
+                }}
+                style={{ flex: 1, padding: '0.8rem', background: '#ef4444', border: 'none', color: 'white', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {messageToDelete && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1.5rem' }}>
+          <div className="auth-card" style={{ width: '100%', maxWidth: '400px', padding: '2rem', textAlign: 'center', margin: 0, animation: 'fadeIn 0.2s ease-out' }}>
+            <XCircle size={48} color="#ef4444" style={{ marginBottom: '1rem', opacity: 0.9 }} />
+            <h3 style={{ fontSize: '1.3rem', marginBottom: '0.5rem', marginTop: 0 }}>Delete Message?</h3>
+            <p style={{ color: 'var(--muted-text)', fontSize: '0.95rem', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+              Are you sure you want to permanently remove this message from your chat history?
+            </p>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button 
+                onClick={() => setMessageToDelete(null)}
+                style={{ flex: 1, padding: '0.8rem', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-color)', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDelete}
+                style={{ flex: 1, padding: '0.8rem', background: '#ef4444', border: 'none', color: 'white', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes pulse {

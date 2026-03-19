@@ -135,3 +135,33 @@ button {
   max-width: 800px;
   margin: 0 auto;
 }
+
+@media (max-width: 600px) {
+  .nav-bar {
+    padding: 1rem !important;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  
+  .hide-icon-text {
+    display: none !important;
+  }
+  
+  .nav-bar h2 {
+    font-size: 1.1rem !important;
+  }
+  
+  .nav-bar button, .nav-bar .btn-primary {
+    padding: 0.4rem 0.6rem !important;
+    font-size: 0.8rem !important;
+    gap: 0.3rem !important;
+  }
+  
+  .page-container {
+    padding: 1rem !important;
+  }
+  
+  .auth-card {
+    padding: 1.25rem !important;
+  }
+}

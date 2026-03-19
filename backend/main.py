@@ -145,13 +145,8 @@ Available users:
 User request: {request.goal}
 
 Your task:
-1. Find the best matching users for this request
-2. For each match, explain why they're a good fit
-3. Suggest what role they could play
-4. Draft a friendly invitation message
-5. Generate a project proposal summarizing their goal into a formal project.
-
-Return your response in this JSON format:
+Analyze the User request. If it is a simple greeting (like 'hello'), a casual question, or off-topic, IGNORE the JSON requirement and simply reply back with a friendly conversational response in plain text.
+HOWEVER, if the user is explicitly trying to build a team or describes a project goal, you MUST synthesize the data and return your response strictly in this JSON format:
 {{
   "project_proposal": {{
     "title": "Catchy Project Title",

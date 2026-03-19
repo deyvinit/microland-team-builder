@@ -50,10 +50,10 @@ export default function Outbox() {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <nav className="nav-bar">
         <button onClick={() => navigate('/dashboard')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-color)' }}>
-          <ArrowLeft size={20} /> Back
+          <ArrowLeft size={20} /> <span className="hide-icon-text">Back</span>
         </button>
         <h2 style={{ fontSize: '1.2rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Inbox size={24} color="var(--primary-color)" /> Outbox
+          <Inbox size={24} color="var(--primary-color)" /> <span className="hide-icon-text">Outbox</span>
         </h2>
         <div style={{ width: 60 }} />
       </nav>

@@ -66,9 +66,9 @@ export default function Dashboard() {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <nav className="nav-bar">
         <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-          <Briefcase size={24} color="var(--primary-color)" /> Team Builder
+          <Briefcase size={24} color="var(--primary-color)" /> <span className="hide-icon-text">Team Builder</span>
         </h2>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <button className="theme-toggle-btn" onClick={toggleTheme} aria-label="Toggle Theme">
             {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
           </button>
@@ -81,10 +81,10 @@ export default function Dashboard() {
             <LogOut size={20} />
           </button>
           <button className="btn-primary" style={{ marginTop: 0, padding: '0.5rem 1rem', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-color)' }} onClick={() => navigate('/outbox')}>
-            <Inbox size={18} /> Outbox
+            <Inbox size={18} /> <span className="hide-icon-text">Outbox</span>
           </button>
           <button className="btn-primary" style={{ marginTop: 0, padding: '0.5rem 1rem' }} onClick={() => navigate('/chat')}>
-            <MessageSquare size={18} /> AI Concierge
+            <MessageSquare size={18} /> <span className="hide-icon-text">AI Concierge</span>
           </button>
         </div>
       </nav>
@@ -296,7 +296,6 @@ export default function Dashboard() {
               </button>
               <button 
                 onClick={() => {
-                  localStorage.removeItem('chat_history');
                   navigate('/login');
                 }}
                 style={{ flex: 1, padding: '0.8rem', background: '#ef4444', border: 'none', color: 'white', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
