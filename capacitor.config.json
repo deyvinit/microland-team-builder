@@ -1,0 +1,6 @@
+{
+  "appId": "com.microland.teambuilder",
+  "appName": "microland-team-builder",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}
