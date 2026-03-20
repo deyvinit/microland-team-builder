@@ -1,6 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mic, Send, Bot, CheckCircle, XCircle, Bell, Edit2 } from 'lucide-react';
+import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
+import TinderCard from 'react-tinder-card';
+
+const generateSkillData = (candidateSkillsStr) => {
+  const skills = candidateSkillsStr ? candidateSkillsStr.toLowerCase() : '';
+  const score = (keywords) => {
+    let pts = 0;
+    keywords.forEach(kw => { if (skills.includes(kw)) pts += 1; });
+    return Math.min(100, (pts * 40) + 20);
+  };
+  return [
+    { subject: 'Frontend', A: score(['react', 'ui', 'ux', 'html', 'css', 'javascript', 'frontend']) },
+    { subject: 'Backend', A: score(['node', 'python', 'django', 'backend', 'api', 'flask', 'java']) },
+    { subject: 'Data/ML', A: score(['ml', 'data', 'sql', 'python', 'ai', 'analytics']) },
+    { subject: 'Design', A: score(['figma', 'ui', 'ux', 'design', 'creative']) },
+    { subject: 'Business', A: score(['pitch', 'fintech', 'management', 'agile', 'startup', 'strategy']) }
+  ];
+};
 
 export default function Chat() {
   const navigate = useNavigate();
@@ -255,7 +273,10 @@ export default function Chat() {
         setMessages(prev => [...prev, { id: Date.now() + 2, text: "I apologize, but I encountered a network error while attempting to dispatch your message. Please check your connection and try again.", sender: 'ai', type: 'text' }]);
       }
     } else {
-      setMessages(prev => [...prev, { id: Date.now() + 2, text: "Understood. I have cleared this match and cancelled the introduction. Let me know if you'd like to adjust your team requirements.", sender: 'ai', type: 'text' }]);
+      const rejectText = profile && profile.name 
+        ? `Understood. I have cleared the match for ${profile.name} and cancelled the introduction. Let me know if you'd like to adjust your team requirements.`
+        : "Understood. I have cleared this match and cancelled the introduction. Let me know if you'd like to adjust your team requirements.";
+      setMessages(prev => [...prev, { id: Date.now() + 2, text: rejectText, sender: 'ai', type: 'text' }]);
     }
   };
 
@@ -413,9 +434,10 @@ export default function Chat() {
             }
 
             if (msg.type === 'proposal') {
-              return (
+              const radarData = generateSkillData(msg.profile.skills);
+              
+              const cardContent = (
                 <div 
-                  key={msg.id} 
                   onContextMenu={(e) => { e.preventDefault(); deleteMessage(msg.id); }}
                   onTouchStart={() => handleTouchStart(msg.id)}
                   onTouchEnd={handleTouchEnd}
@@ -426,9 +448,9 @@ export default function Chat() {
                   padding: '1.5rem',
                   borderRadius: '16px',
                   border: '1px solid var(--border-color)',
-                  maxWidth: '90%',
-                  width: '500px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+                  width: '100%',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                  cursor: msg.status === 'pending' ? 'grab' : 'default'
                 }}>
                   {/* Specific Candidate Card UI */}
                   <div style={{ background: 'var(--bg-color)', padding: '1.25rem', borderRadius: '12px', marginBottom: '1rem', borderTop: '4px solid var(--primary-color)' }}>
@@ -438,6 +460,19 @@ export default function Chat() {
                     <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--muted-text)' }}>
                       <strong style={{ color: 'var(--text-color)' }}>Skills:</strong> {msg.profile.skills}
                     </p>
+                  </div>
+
+                  {/* Visual Radar Chart */}
+                  <div style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: '12px', marginBottom: '1rem', height: '240px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                     <strong style={{ color: 'var(--text-color)', fontSize: '0.95rem', width: '100%', marginBottom: '0.2rem', textAlign: 'center' }}>📊 Skill Synergy</strong>
+                     <ResponsiveContainer width="100%" height="100%">
+                        <RadarChart cx="50%" cy="50%" outerRadius="65%" data={radarData}>
+                          <PolarGrid stroke="var(--border-color)" />
+                          <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-color)', fontSize: 11 }} />
+                          <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                          <Radar name="Candidate" dataKey="A" stroke="var(--primary-color)" fill="var(--primary-color)" fillOpacity={0.4} />
+                        </RadarChart>
+                     </ResponsiveContainer>
                   </div>
                   
                   {/* The 'Why' Factor rendered from API explanation */}
@@ -468,24 +503,48 @@ export default function Chat() {
 
                   {/* The Approval Gate Buttons aligned to POST structure */}
                   {msg.status === 'pending' ? (
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                      <button 
-                        onClick={() => handleAction(msg.id, 'approved', msg.profile, msg.reasoning, msg.draftMessage)}
-                        style={{ flex: 1, padding: '0.8rem', background: '#10b981', color: 'white', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}
-                      >
-                        <CheckCircle size={18} /> Approve & Send
-                      </button>
-                      <button 
-                        onClick={() => handleAction(msg.id, 'rejected')}
-                        style={{ flex: 1, padding: '0.8rem', background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}
-                      >
-                        <XCircle size={18} /> Reject
-                      </button>
+                    <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
+                      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--muted-text)', textAlign: 'center' }}>
+                        Swipe <strong>Right</strong> to Approve, Swipe <strong>Left</strong> to Reject
+                      </p>
+                      <div style={{ display: 'flex', gap: '1rem' }}>
+                        <button 
+                          onClick={() => handleAction(msg.id, 'approved', msg.profile, msg.reasoning, msg.draftMessage)}
+                          style={{ flex: 1, padding: '0.8rem', background: '#10b981', color: 'white', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', fontWeight: 600, border: 'none', cursor: 'pointer' }}
+                        >
+                          <CheckCircle size={18} /> Approve
+                        </button>
+                        <button 
+                          onClick={() => handleAction(msg.id, 'rejected')}
+                          style={{ flex: 1, padding: '0.8rem', background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          <XCircle size={18} /> Reject
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <div style={{ textAlign: 'center', color: msg.status === 'approved' ? '#10b981' : '#ef4444', fontWeight: 600 }}>
                       {msg.status === 'approved' ? '✅ Action Approved' : '❌ Action Rejected'}
                     </div>
+                  )}
+                </div>
+              );
+
+              return (
+                <div key={msg.id} style={{ alignSelf: 'flex-start', maxWidth: '90%', width: '500px', position: 'relative' }}>
+                  {msg.status === 'pending' ? (
+                    <TinderCard 
+                      onSwipe={(dir) => {
+                        if (dir === 'right') handleAction(msg.id, 'approved', msg.profile, msg.reasoning, msg.draftMessage);
+                        else if (dir === 'left') handleAction(msg.id, 'rejected', msg.profile, msg.reasoning, msg.draftMessage);
+                      }} 
+                      preventSwipe={['up', 'down']}
+                      className="swipe-card"
+                    >
+                      {cardContent}
+                    </TinderCard>
+                  ) : (
+                    cardContent
                   )}
                 </div>
               );
