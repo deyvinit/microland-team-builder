@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mic, Send, Bot, CheckCircle, XCircle, Bell, Edit2 } from 'lucide-react';
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import TinderCard from 'react-tinder-card';
+import '../styles/Chat.css';
 
 const generateSkillData = (candidateSkillsStr) => {
   const skills = candidateSkillsStr ? candidateSkillsStr.toLowerCase() : '';
@@ -42,20 +43,18 @@ export default function Chat() {
   const handleTouchEnd = () => {
     if (touchTimer) clearTimeout(touchTimer);
   };
-  
-  // Initialize from LocalStorage or Fallback to Default Welcome Message
+
   const [messages, setMessages] = useState(() => {
     const saved = localStorage.getItem('chat_history');
     if (saved) return JSON.parse(saved);
     return [{ id: Date.now(), text: "Hello! I'm your AI Concierge. What kind of team are you looking to build today?", sender: 'ai', type: 'text' }];
   });
-  
+
   const [isTyping, setIsTyping] = useState(false);
   const [pushNotification, setPushNotification] = useState('');
   const [messageToDelete, setMessageToDelete] = useState(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
-  // Persist messages to LocalStorage whenever they update
   useEffect(() => {
     localStorage.setItem('chat_history', JSON.stringify(messages));
   }, [messages]);
@@ -76,7 +75,7 @@ export default function Chat() {
 
     recognition.onstart = () => {
       setIsListening(true);
-      setQuery(''); // Clear field so they see it transcribing
+      setQuery('');
     };
 
     recognition.onresult = (event) => {
@@ -103,8 +102,7 @@ export default function Chat() {
     setMessages(prev => [...prev, userMessage]);
     setQuery('');
     setIsTyping(true);
-    
-    // Auto-reset textarea height after dispatched
+
     const txt = document.getElementById('chat-input-area');
     if (txt) txt.style.height = 'auto';
 
@@ -118,7 +116,6 @@ export default function Chat() {
       setIsTyping(false);
 
       let parsedData = data;
-      // If the backend returned a raw string because of markdown wrapper, safely extract the JSON
       if (data.response && typeof data.response === 'string') {
         const raw = data.response;
         const firstBrace = raw.indexOf('{');
@@ -133,7 +130,6 @@ export default function Chat() {
       }
 
       if (parsedData.project_proposal && parsedData.matches && parsedData.matches.length > 0) {
-        // Enqueue a custom Project Proposal UI block, caching the hidden matches
         setMessages(prev => [...prev, {
           id: Date.now() + 50,
           sender: 'ai',
@@ -146,7 +142,6 @@ export default function Chat() {
           isEditingProject: false
         }]);
       } else if (parsedData.matches && parsedData.matches.length > 0) {
-        // Fallback if no project proposal was generated
         parsedData.matches.forEach((match, index) => {
           setMessages(prev => [...prev, {
             id: Date.now() + 1 + index,
@@ -208,7 +203,6 @@ export default function Chat() {
           createdProjectId = newProj.id;
         }
 
-        // Now unleash the hidden matches!
         const unpackedProposals = hiddenMatches.map((match, index) => ({
           id: Date.now() + 100 + index,
           sender: 'ai',
@@ -219,8 +213,8 @@ export default function Chat() {
           suggestedRoles: hiddenRoles,
           status: 'pending'
         }));
-        
-        setMessages(prev => [...prev, 
+
+        setMessages(prev => [...prev,
           { id: Date.now() + 1, text: `Project '${project.title}' officially deployed to Dashboard. Finding matching talent now...`, sender: 'ai', type: 'text' },
           ...unpackedProposals
         ]);
@@ -229,9 +223,9 @@ export default function Chat() {
           setMessages(prev => [...prev, { id: Date.now() + 500, text: `Summary: ${hiddenSummary}`, sender: 'ai', type: 'text' }]);
         }
 
-      } catch(e) { 
+      } catch(e) {
         setIsTyping(false);
-        console.error("Agentic project creation failed", e); 
+        console.error("Agentic project creation failed", e);
       }
     } else {
       setMessages(prev => prev.map(m => m.id === msgId ? { ...m, status: 'rejected' } : m));
@@ -247,16 +241,15 @@ export default function Chat() {
         const usersResp = await fetch(`${import.meta.env.VITE_API_URL}/users`);
         const users = await usersResp.json();
         const matchedUser = users.find(u => u.name.toLowerCase() === profile.name.toLowerCase());
-        const targetUserId = matchedUser ? matchedUser.id : 1; 
+        const targetUserId = matchedUser ? matchedUser.id : 1;
 
-        // Included profile_id and project_id correctly
         await fetch(`${import.meta.env.VITE_API_URL}/messages/approve`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            user_id: 1, 
+            user_id: 1,
             profile_id: targetUserId,
-            project_id: profile.projectId || 1, // Dynamic mapping to auto-created project
+            project_id: profile.projectId || 1,
             approved_matches: [targetUserId],
             messages: {
               [targetUserId]: draftMsg
@@ -264,8 +257,7 @@ export default function Chat() {
           })
         });
         setMessages(prev => [...prev, { id: Date.now() + 2, text: `Excellent choice. I've successfully dispatched your introduction to ${profile.name}. You can track this message or revoke it at any time from your Outbox.`, sender: 'ai', type: 'text' }]);
-        
-        // Trigger generic simulated push notification
+
         setPushNotification(`Notification: Intro message successfully sent to ${profile.name}!`);
         setTimeout(() => setPushNotification(''), 4500);
       } catch (err) {
@@ -273,7 +265,7 @@ export default function Chat() {
         setMessages(prev => [...prev, { id: Date.now() + 2, text: "I apologize, but I encountered a network error while attempting to dispatch your message. Please check your connection and try again.", sender: 'ai', type: 'text' }]);
       }
     } else {
-      const rejectText = profile && profile.name 
+      const rejectText = profile && profile.name
         ? `Understood. I have cleared the match for ${profile.name} and cancelled the introduction. Let me know if you'd like to adjust your team requirements.`
         : "Understood. I have cleared this match and cancelled the introduction. Let me know if you'd like to adjust your team requirements.";
       setMessages(prev => [...prev, { id: Date.now() + 2, text: rejectText, sender: 'ai', type: 'text' }]);
@@ -281,53 +273,40 @@ export default function Chat() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      
+    <div className="chat-page">
+
       {pushNotification && (
-        <div style={{ position: 'fixed', top: '2rem', left: '50%', transform: 'translateX(-50%)', background: 'var(--primary-color)', color: 'white', padding: '1rem 2rem', borderRadius: '12px', zIndex: 9999, display: 'flex', alignItems: 'center', gap: '0.8rem', boxShadow: '0 10px 30px rgba(0,0,0,0.15)', animation: 'slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1)', fontWeight: 600 }}>
+        <div className="push-notification">
           <Bell size={20} />
           {pushNotification}
         </div>
       )}
 
       <nav className="nav-bar">
-        <button onClick={() => navigate('/dashboard')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-color)' }}>
+        <button onClick={() => navigate('/dashboard')} className="chat-back-btn">
           <ArrowLeft size={20} /> <span className="hide-icon-text">Back</span>
         </button>
-        <h2 style={{ fontSize: '1.2rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <h2 className="chat-title">
           <Bot size={24} color="var(--primary-color)" /> <span className="hide-icon-text">AI Concierge</span>
         </h2>
-        <button 
-          onClick={() => setShowClearConfirm(true)} 
-          style={{ color: 'var(--muted-text)', fontSize: '0.85rem', background: 'transparent', border: '1px solid var(--border-color)', padding: '0.4rem 0.8rem', borderRadius: '4px' }}
-        >
+        <button onClick={() => setShowClearConfirm(true)} className="chat-clear-btn">
           Clear All
         </button>
       </nav>
 
-      <main className="page-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%' }}>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem', paddingBottom: '2rem' }}>
+      <main className="page-container chat-body">
+        <div className="chat-messages">
           {messages.map(msg => {
             if (msg.type === 'text') {
               return (
-                <div 
-                  key={msg.id} 
+                <div
+                  key={msg.id}
                   onContextMenu={(e) => { e.preventDefault(); deleteMessage(msg.id); }}
                   onTouchStart={() => handleTouchStart(msg.id)}
                   onTouchEnd={handleTouchEnd}
                   onTouchCancel={handleTouchEnd}
-                  style={{ 
-                  alignSelf: msg.sender === 'ai' ? 'flex-start' : 'flex-end',
-                  background: msg.sender === 'ai' ? 'var(--card-bg)' : 'var(--primary-color)',
-                  color: msg.sender === 'ai' ? 'var(--text-color)' : '#fff',
-                  padding: '1rem 1.5rem',
-                  borderRadius: '24px',
-                  borderBottomLeftRadius: msg.sender === 'ai' ? '4px' : '24px',
-                  borderBottomRightRadius: msg.sender === 'user' ? '4px' : '24px',
-                  border: msg.sender === 'ai' ? '1px solid var(--border-color)' : 'none',
-                  maxWidth: '80%',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-                }}>
+                  className={`chat-bubble ${msg.sender === 'ai' ? 'chat-bubble--ai' : 'chat-bubble--user'}`}
+                >
                   {msg.text}
                 </div>
               );
@@ -335,97 +314,84 @@ export default function Chat() {
 
             if (msg.type === 'project_proposal') {
               return (
-                <div 
-                  key={msg.id} 
+                <div
+                  key={msg.id}
                   onContextMenu={(e) => { e.preventDefault(); deleteMessage(msg.id); }}
                   onTouchStart={() => handleTouchStart(msg.id)}
                   onTouchEnd={handleTouchEnd}
                   onTouchCancel={handleTouchEnd}
-                  style={{
-                  alignSelf: 'flex-start',
-                  background: 'var(--card-bg)',
-                  padding: '1.5rem',
-                  borderRadius: '16px',
-                  border: '1px solid var(--border-color)',
-                  maxWidth: '90%',
-                  width: '500px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-                }}>
-                  <div style={{ background: 'var(--bg-color)', padding: '1.25rem', borderRadius: '12px', marginBottom: '1rem', borderTop: '4px solid var(--primary-color)', position: 'relative' }}>
+                  className="chat-card"
+                >
+                  <div className="card-header card-header--relative">
                     {msg.status === 'pending' && (
-                      <button 
-                        onClick={() => handleEditToggle(msg.id)}
-                        style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'transparent', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem', fontWeight: 600 }}
-                      >
+                      <button onClick={() => handleEditToggle(msg.id)} className="card-edit-btn">
                         <Edit2 size={14} /> {msg.isEditingProject ? 'Save' : 'Edit'}
                       </button>
                     )}
-                    
-                    <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '0.4rem', paddingRight: '4rem' }}>
+
+                    <h3 className="card-header__title card-header__title--padded">
                       💼 {msg.isEditingProject ? 'Edit Project' : `Proposed Project: ${msg.project.title}`}
                     </h3>
-                    
+
                     {msg.isEditingProject ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginTop: '1rem' }}>
-                        <input 
-                          type="text" 
-                          value={msg.project.title} 
+                      <div className="card-edit-form">
+                        <input
+                          type="text"
+                          value={msg.project.title}
                           onChange={(e) => handleProjectFieldChange(msg.id, 'title', e.target.value)}
-                          style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-color)', width: '100%', fontSize: '0.95rem' }}
+                          className="card-edit-input"
                           placeholder="Project Title"
                         />
-                        <textarea 
-                          value={msg.project.description} 
+                        <textarea
+                          value={msg.project.description}
                           onChange={(e) => handleProjectFieldChange(msg.id, 'description', e.target.value)}
-                          style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-color)', width: '100%', minHeight: '80px', fontSize: '0.95rem', fontFamily: 'inherit', resize: 'vertical' }}
+                          className="card-edit-textarea"
                           placeholder="Project Description"
                         />
                       </div>
                     ) : (
-                      <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--muted-text)', lineHeight: '1.5' }}>
-                        {msg.project.description}
-                      </p>
+                      <p className="card-header__description">{msg.project.description}</p>
                     )}
                   </div>
-                  
-                  <div style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-color)' }}>
+
+                  <div className="card-info">
                     <strong>🛠️ Required Skills Identified:</strong><br />
                     {msg.isEditingProject ? (
-                        <input 
-                          type="text" 
-                          value={msg.project.required_skills} 
+                        <input
+                          type="text"
+                          value={msg.project.required_skills}
                           onChange={(e) => handleProjectFieldChange(msg.id, 'required_skills', e.target.value)}
-                          style={{ padding: '0.4rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-color)', width: '100%', marginTop: '0.5rem', fontSize: '0.85rem' }}
+                          className="card-info__skills-input"
                           placeholder="Comma-separated skills..."
                         />
                     ) : (
-                        <span style={{ color: 'var(--primary-color)', fontWeight: 500, display: 'block', marginTop: '0.2rem' }}>{msg.project.required_skills}</span>
+                        <span className="card-info__highlight">{msg.project.required_skills}</span>
                     )}
                   </div>
 
                   {msg.status === 'pending' ? (
-                    <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
-                       <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--muted-text)', textAlign: 'center' }}>
+                    <div className="card-actions">
+                       <p className="card-actions__hint">
                          {msg.isEditingProject ? 'Save your changes above before launching!' : 'Should I launch this project and draft invitations to suitable candidates?'}
                        </p>
-                       <div style={{ display: 'flex', gap: '1rem' }}>
-                        <button 
+                       <div className="card-actions__row">
+                        <button
                           onClick={() => handleProjectAction(msg.id, 'approved', msg.project, msg.hiddenMatches, msg.hiddenSummary, msg.hiddenRoles)}
                           disabled={msg.isEditingProject}
-                          style={{ flex: 1, padding: '0.8rem', background: msg.isEditingProject ? 'var(--border-color)' : 'var(--primary-color)', color: msg.isEditingProject ? 'var(--muted-text)' : 'white', border: 'none', borderRadius: '8px', cursor: msg.isEditingProject ? 'not-allowed' : 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', fontWeight: 600, transition: 'all 0.2s' }}
+                          className={`btn-launch ${msg.isEditingProject ? 'btn-launch--disabled' : 'btn-launch--active'}`}
                         >
                           <CheckCircle size={18} /> Launch Project & Find Team
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleProjectAction(msg.id, 'rejected')}
-                          style={{ flex: 1, padding: '0.8rem', background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}
+                          className="btn-reject"
                         >
                           <XCircle size={18} /> Discard
                         </button>
                       </div>
                     </div>
                   ) : (
-                    <div style={{ textAlign: 'center', color: msg.status === 'approved' ? '#10b981' : '#ef4444', fontWeight: 600 }}>
+                    <div className={`card-status ${msg.status === 'approved' ? 'card-status--approved' : 'card-status--rejected'}`}>
                       {msg.status === 'approved' ? '✅ Project Launched' : '❌ Project Discarded'}
                     </div>
                   )}
@@ -435,36 +401,26 @@ export default function Chat() {
 
             if (msg.type === 'proposal') {
               const radarData = generateSkillData(msg.profile.skills);
-              
+
               const cardContent = (
-                <div 
+                <div
                   onContextMenu={(e) => { e.preventDefault(); deleteMessage(msg.id); }}
                   onTouchStart={() => handleTouchStart(msg.id)}
                   onTouchEnd={handleTouchEnd}
                   onTouchCancel={handleTouchEnd}
-                  style={{
-                  alignSelf: 'flex-start',
-                  background: 'var(--card-bg)',
-                  padding: '1.5rem',
-                  borderRadius: '16px',
-                  border: '1px solid var(--border-color)',
-                  width: '100%',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                  cursor: msg.status === 'pending' ? 'grab' : 'default'
-                }}>
-                  {/* Specific Candidate Card UI */}
-                  <div style={{ background: 'var(--bg-color)', padding: '1.25rem', borderRadius: '12px', marginBottom: '1rem', borderTop: '4px solid var(--primary-color)' }}>
-                    <h3 style={{ margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-color)' }}>
+                  className={`proposal-card ${msg.status === 'pending' ? 'proposal-card--pending' : ''}`}
+                >
+                  <div className="card-header">
+                    <h3 className="card-header__title">
                       👤 {msg.profile.name}
                     </h3>
-                    <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--muted-text)' }}>
+                    <p className="card-header__subtitle">
                       <strong style={{ color: 'var(--text-color)' }}>Skills:</strong> {msg.profile.skills}
                     </p>
                   </div>
 
-                  {/* Visual Radar Chart */}
-                  <div style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: '12px', marginBottom: '1rem', height: '240px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                     <strong style={{ color: 'var(--text-color)', fontSize: '0.95rem', width: '100%', marginBottom: '0.2rem', textAlign: 'center' }}>📊 Skill Synergy</strong>
+                  <div className="radar-chart-container">
+                     <strong className="radar-chart-title">📊 Skill Synergy</strong>
                      <ResponsiveContainer width="100%" height="100%">
                         <RadarChart cx="50%" cy="50%" outerRadius="65%" data={radarData}>
                           <PolarGrid stroke="var(--border-color)" />
@@ -474,56 +430,52 @@ export default function Chat() {
                         </RadarChart>
                      </ResponsiveContainer>
                   </div>
-                  
-                  {/* The 'Why' Factor rendered from API explanation */}
-                  <div style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-color)' }}>
+
+                  <div className="card-info">
                     <strong>🧠 AI Explanation:</strong><br />
                     {msg.reasoning}
                   </div>
 
-                  {/* Suggested Roles filtered for this specific candidate */}
                   {msg.suggestedRoles && Object.entries(msg.suggestedRoles).some(([role, name]) => name === msg.profile.name) && (
-                    <div style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-color)' }}>
+                    <div className="card-info">
                       <strong>✨ Suggested Role:</strong><br />
                       {Object.entries(msg.suggestedRoles)
                         .filter(([role, name]) => name === msg.profile.name)
                         .map(([role]) => (
-                          <span key={role} style={{ display: 'block', marginTop: '0.2rem', color: 'var(--primary-color)', fontWeight: 500 }}>{role}</span>
+                          <span key={role} className="card-role">{role}</span>
                       ))}
                     </div>
                   )}
-                  
-                  {/* The Draft Message */}
+
                   {msg.draftMessage && (
-                    <div style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.9rem', color: 'var(--text-color)', borderLeft: '4px solid var(--primary-color)' }}>
+                    <div className="card-draft">
                       <strong>📝 Draft Message:</strong><br /><br />
                       <span style={{ whiteSpace: 'pre-wrap' }}>{msg.draftMessage}</span>
                     </div>
                   )}
 
-                  {/* The Approval Gate Buttons aligned to POST structure */}
                   {msg.status === 'pending' ? (
-                    <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
-                      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--muted-text)', textAlign: 'center' }}>
+                    <div className="card-actions">
+                      <p className="card-actions__hint">
                         Swipe <strong>Right</strong> to Approve, Swipe <strong>Left</strong> to Reject
                       </p>
-                      <div style={{ display: 'flex', gap: '1rem' }}>
-                        <button 
+                      <div className="card-actions__row">
+                        <button
                           onClick={() => handleAction(msg.id, 'approved', msg.profile, msg.reasoning, msg.draftMessage)}
-                          style={{ flex: 1, padding: '0.8rem', background: '#10b981', color: 'white', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', fontWeight: 600, border: 'none', cursor: 'pointer' }}
+                          className="btn-approve"
                         >
                           <CheckCircle size={18} /> Approve
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleAction(msg.id, 'rejected')}
-                          style={{ flex: 1, padding: '0.8rem', background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', fontWeight: 600, cursor: 'pointer' }}
+                          className="btn-reject"
                         >
                           <XCircle size={18} /> Reject
                         </button>
                       </div>
                     </div>
                   ) : (
-                    <div style={{ textAlign: 'center', color: msg.status === 'approved' ? '#10b981' : '#ef4444', fontWeight: 600 }}>
+                    <div className={`card-status ${msg.status === 'approved' ? 'card-status--approved' : 'card-status--rejected'}`}>
                       {msg.status === 'approved' ? '✅ Action Approved' : '❌ Action Rejected'}
                     </div>
                   )}
@@ -531,13 +483,13 @@ export default function Chat() {
               );
 
               return (
-                <div key={msg.id} style={{ alignSelf: 'flex-start', maxWidth: '90%', width: '500px', position: 'relative' }}>
+                <div key={msg.id} className="swipe-wrapper">
                   {msg.status === 'pending' ? (
-                    <TinderCard 
+                    <TinderCard
                       onSwipe={(dir) => {
                         if (dir === 'right') handleAction(msg.id, 'approved', msg.profile, msg.reasoning, msg.draftMessage);
                         else if (dir === 'left') handleAction(msg.id, 'rejected', msg.profile, msg.reasoning, msg.draftMessage);
-                      }} 
+                      }}
                       preventSwipe={['up', 'down']}
                       className="swipe-card"
                     >
@@ -552,39 +504,36 @@ export default function Chat() {
             return null;
           })}
 
-          {/* SKELETON LOADER */}
           {isTyping && (
-            <div style={{ alignSelf: 'flex-start', width: '380px', background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-               {/* Skeleton Header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                <div className="skeleton-pulse" style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--border-color)' }}></div>
-                <div className="skeleton-pulse" style={{ height: '24px', width: '160px', background: 'var(--border-color)', borderRadius: '4px' }}></div>
+            <div className="chat-skeleton">
+              <div className="skeleton-header">
+                <div className="skeleton-pulse skeleton-avatar"></div>
+                <div className="skeleton-pulse skeleton-title"></div>
               </div>
-              {/* Skeleton Lines */}
-              <div className="skeleton-pulse" style={{ height: '16px', width: '100%', background: 'var(--border-color)', borderRadius: '4px', marginBottom: '0.8rem' }}></div>
-              <div className="skeleton-pulse" style={{ height: '16px', width: '90%', background: 'var(--border-color)', borderRadius: '4px', marginBottom: '0.8rem' }}></div>
-              <div className="skeleton-pulse" style={{ height: '16px', width: '70%', background: 'var(--border-color)', borderRadius: '4px' }}></div>
+              <div className="skeleton-pulse skeleton-line skeleton-line--full"></div>
+              <div className="skeleton-pulse skeleton-line skeleton-line--90"></div>
+              <div className="skeleton-pulse skeleton-line skeleton-line--70"></div>
             </div>
           )}
 
           {isListening && (
-            <div style={{ alignSelf: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', marginTop: '3rem', color: 'var(--primary-color)' }}>
-              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--pulse-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'pulse 1.5s infinite' }}>
+            <div className="listening-indicator">
+              <div className="listening-indicator__circle">
                 <Mic size={40} />
               </div>
-              <span className="animate-pulse" style={{ fontWeight: 600 }}>Listening... Speak now</span>
+              <span className="listening-indicator__text">Listening... Speak now</span>
             </div>
           )}
         </div>
 
-        <div style={{ background: 'var(--card-bg)', padding: '1rem', borderRadius: '99px', display: 'flex', alignItems: 'center', gap: '1rem', border: '1px solid var(--border-color)', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', marginTop: 'auto' }}>
-          <button onClick={toggleListen} style={{ background: isListening ? '#ef4444' : 'var(--primary-color)', color: '#fff', padding: '0.8rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s ease' }}>
+        <div className="chat-input-bar">
+          <button onClick={toggleListen} className={`chat-mic-btn ${isListening ? 'chat-mic-btn--active' : 'chat-mic-btn--inactive'}`}>
             <Mic size={20} />
           </button>
-          
-          <textarea 
+
+          <textarea
             id="chat-input-area"
-            placeholder="Type your goal... (e.g. 'Build my fintech team')" 
+            placeholder="Type your goal... (e.g. 'Build my fintech team')"
             value={query}
             onChange={e => {
               setQuery(e.target.value);
@@ -598,26 +547,12 @@ export default function Chat() {
               }
             }}
             rows={1}
-            style={{ 
-              flex: 1, 
-              border: 'none', 
-              background: 'transparent', 
-              fontSize: '1.05rem', 
-              color: 'var(--text-color)', 
-              outline: 'none',
-              resize: 'none',
-              minHeight: '24px',
-              maxHeight: '120px',
-              overflowY: 'auto',
-              fontFamily: 'inherit',
-              padding: '2px 0',
-              lineHeight: '1.4'
-            }} 
+            className="chat-textarea"
           />
-          
-          <button 
+
+          <button
             onClick={() => handleSend(query)}
-            style={{ background: query.length > 0 ? 'var(--primary-color)' : 'var(--border-color)', color: query.length > 0 ? '#fff' : 'var(--muted-text)', padding: '0.8rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' }}
+            className={`chat-send-btn ${query.length > 0 ? 'chat-send-btn--active' : 'chat-send-btn--inactive'}`}
           >
             <Send size={20} />
           </button>
@@ -625,26 +560,23 @@ export default function Chat() {
       </main>
 
       {showClearConfirm && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1.5rem' }}>
-          <div className="auth-card" style={{ width: '100%', maxWidth: '400px', padding: '2rem', textAlign: 'center', margin: 0, animation: 'fadeIn 0.2s ease-out' }}>
-            <h3 style={{ fontSize: '1.3rem', marginBottom: '0.5rem', marginTop: 0 }}>Clear All Chat History?</h3>
-            <p style={{ color: 'var(--muted-text)', fontSize: '0.95rem', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+        <div className="modal-overlay">
+          <div className="auth-card modal-card">
+            <h3 className="modal-card__title">Clear All Chat History?</h3>
+            <p className="modal-card__text">
               Are you sure you want to permanently delete your entire conversation history with the AI Concierge?
             </p>
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <button 
-                onClick={() => setShowClearConfirm(false)}
-                style={{ flex: 1, padding: '0.8rem', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-color)', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
-              >
+            <div className="modal-actions">
+              <button onClick={() => setShowClearConfirm(false)} className="btn-cancel">
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={() => {
                   localStorage.removeItem('chat_history');
                   setMessages([{ id: Date.now(), text: "Hello! I'm your AI Concierge. What kind of team are you looking to build today?", sender: 'ai', type: 'text' }]);
                   setShowClearConfirm(false);
                 }}
-                style={{ flex: 1, padding: '0.8rem', background: '#ef4444', border: 'none', color: 'white', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
+                className="btn-danger"
               >
                 Clear All
               </button>
@@ -654,55 +586,24 @@ export default function Chat() {
       )}
 
       {messageToDelete && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1.5rem' }}>
-          <div className="auth-card" style={{ width: '100%', maxWidth: '400px', padding: '2rem', textAlign: 'center', margin: 0, animation: 'fadeIn 0.2s ease-out' }}>
-            <XCircle size={48} color="#ef4444" style={{ marginBottom: '1rem', opacity: 0.9 }} />
-            <h3 style={{ fontSize: '1.3rem', marginBottom: '0.5rem', marginTop: 0 }}>Delete Message?</h3>
-            <p style={{ color: 'var(--muted-text)', fontSize: '0.95rem', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+        <div className="modal-overlay">
+          <div className="auth-card modal-card">
+            <XCircle size={48} color="#ef4444" className="modal-card__icon" />
+            <h3 className="modal-card__title">Delete Message?</h3>
+            <p className="modal-card__text">
               Are you sure you want to permanently remove this message from your chat history?
             </p>
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <button 
-                onClick={() => setMessageToDelete(null)}
-                style={{ flex: 1, padding: '0.8rem', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-color)', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
-              >
+            <div className="modal-actions">
+              <button onClick={() => setMessageToDelete(null)} className="btn-cancel">
                 Cancel
               </button>
-              <button 
-                onClick={confirmDelete}
-                style={{ flex: 1, padding: '0.8rem', background: '#ef4444', border: 'none', color: 'white', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
-              >
+              <button onClick={confirmDelete} className="btn-danger">
                 Delete
               </button>
             </div>
           </div>
         </div>
       )}
-
-      <style>{`
-        @keyframes pulse {
-          0% { transform: scale(0.95); opacity: 0.8; }
-          50% { transform: scale(1.1); opacity: 1; }
-          100% { transform: scale(0.95); opacity: 0.8; }
-        }
-        .animate-pulse {
-          animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-
-        @keyframes skeleton-pulse {
-          0% { opacity: 0.8; }
-          50% { opacity: 0.4; }
-          100% { opacity: 0.8; }
-        }
-        .skeleton-pulse {
-          animation: skeleton-pulse 1.5s ease-in-out infinite;
-        }
-
-        @keyframes slideDown {
-          0% { transform: translate(-50%, -100%); opacity: 0; }
-          100% { transform: translate(-50%, 0); opacity: 1; }
-        }
-      `}</style>
     </div>
   );
 }
